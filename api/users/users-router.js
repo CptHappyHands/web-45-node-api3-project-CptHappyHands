@@ -41,55 +41,64 @@ router.post("/", validateUser, (req, res, next) => {
   // this needs a middleware to check that the request body is valid
 });
 
-router.put("/:id", validateUserId, validateUser, async (req, res, next) => {
-  const { id, name } = req.body;
-  if (!id || !name) {
-    res.status(400).json({ message: "This isn't working" });
-  } else {
-    Users.getById(req.params.id)
-      .then((user) => {
-        if (!user) {
-          res.status(404).json({
-            message: "The specified Id does not exist",
-          });
-        } else {
-          return Users.insert(req.params.id, req.body);
-        }
-      })
-      .then((data) => {
-        if (data) {
-          return Users.getById(req.params.id, req.body);
-        }
-      })
-      .then((moreData) => {
-        if (moreData) {
-          res.json(moreData);
-        }
-      })
-      .catch((error) => {
-        next(error);
-      });
-  }
+router.put("/:id", validateUserId, validateUser, (req, res, next) => {
+  Users.update(req.params.id, { name: req.name })
+    .then(() => {
+      return Users.getById(req.params.id);
+    })
+    .then((user) => {
+      res.json(user);
+    })
+    .catch((err) => {
+      next(err);
+    });
   // RETURN THE FRESHLY UPDATED USER OBJECT
   // this needs a middleware to verify user id
   // and another middleware to check that the request body is valid
 });
 
-router.delete("/:id", validateUserId, (req, res) => {
+router.delete("/:id", validateUserId, async (req, res, next) => {
+  try {
+    await Users.remove(req.params.id);
+    res.json(req.user);
+  } catch (err) {
+    next(err);
+  }
   // RETURN THE FRESHLY DELETED USER OBJECT
   // this needs a middleware to verify user id
 });
 
-router.get("/:id/posts", validateUserId, validatePost, (req, res) => {
+router.get("/:id/posts", validateUserId, async (req, res, next) => {
+  try {
+    const result = await Users.getUserPosts(req.params.id);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
   // RETURN THE ARRAY OF USER POSTS
   // this needs a middleware to verify user id
 });
 
-router.post("/:id/posts", validateUserId, (req, res) => {
-  // RETURN THE NEWLY CREATED USER POST
-  // this needs a middleware to verify user id
-  // and another middleware to check that the request body is valid
-});
+router.post(
+  "/:id/posts",
+  validateUserId,
+  validatePost,
+  async (req, res, next) => {
+    try {
+      const result = await Posts.insert({
+        user_id: req.params.id,
+        text: req.text,
+      });
+      res.status(201).json(result);
+    } catch (err) {
+      next(err);
+    }
+
+    // RETURN THE NEWLY CREATED USER POST
+    // this needs a middleware to verify user id
+    // and another middleware to check that the request body is valid
+  }
+);
 
 router.use((err, req, res, next) => {
   res.status(err.status || 500).json({
