@@ -5,6 +5,7 @@ const {
   logger,
   validateUser,
   validateUserId,
+  validatePost,
 } = require("../middleware/middleware");
 
 // You will need `users-model.js` and `posts-model.js` both
@@ -13,36 +14,29 @@ const {
 const router = express.Router();
 
 router.get("/", logger, (req, res, next) => {
-  Users.get(req.params.id)
+  Users.get()
     .then((users) => {
       res.status(200).json(users);
     })
-    .catch((error) => {
-      next(error);
+    .catch((err) => {
+      next(err);
     });
   // RETURN AN ARRAY WITH ALL THE USERS
 });
 
-router.get("/:id", logger, validateUserId, async (req, res, next) => {
-  Users.getById(req.params.id)
-    .then((user) => {
-      res.status(200).json(user);
-    })
-    .catch((error) => {
-      next(error);
-    });
-  // RETURN THE USER OBJECT
-  // this needs a middleware to verify user id
+router.get("/:id", validateUserId, async (req, res, next) => {
+  res.json(req.user);
 });
 
 router.post("/", validateUser, (req, res, next) => {
-  Users.insert(req.body)
-    .then((user) => {
-      res.status(201).json(user);
+  Users.insert({ name: req.name })
+    .then((newUser) => {
+      res.status(201).json(newUser);
     })
-    .catch((error) => {
-      next(error);
+    .catch((err) => {
+      next(err);
     });
+
   // RETURN THE NEWLY CREATED USER OBJECT
   // this needs a middleware to check that the request body is valid
 });
@@ -86,7 +80,7 @@ router.delete("/:id", validateUserId, (req, res) => {
   // this needs a middleware to verify user id
 });
 
-router.get("/:id/posts", validateUserId, (req, res) => {
+router.get("/:id/posts", validateUserId, validatePost, (req, res) => {
   // RETURN THE ARRAY OF USER POSTS
   // this needs a middleware to verify user id
 });
@@ -95,6 +89,14 @@ router.post("/:id/posts", validateUserId, (req, res) => {
   // RETURN THE NEWLY CREATED USER POST
   // this needs a middleware to verify user id
   // and another middleware to check that the request body is valid
+});
+
+router.use((err, req, res, next) => {
+  res.status(err.status || 500).json({
+    customMessage: "bad things happened in posts",
+    message: err.message,
+    stack: err.stack,
+  });
 });
 
 // do not forget to export the router
