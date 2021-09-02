@@ -3,25 +3,41 @@ const User = require("../users/users-model");
 // const Post = require("../posts/posts-model");
 
 function logger(req, res, next) {
-  console.log(`[${new Date().toISOString()}]${req.method} to ${req.url}`);
+  console.log(
+    `[${new Date().toISOString()}]${req.method} to ${req.originalUrl}`
+  );
   next();
 }
 
-function validateUserId(req, res, next) {
-  const { id } = req.params;
-  User.getById(id).then((possibleUser) => {
-    if (possibleUser) {
-      req.id = possibleUser;
-      next();
+async function validateUserId(req, res, next) {
+  try {
+    const user = await User.getById(req.params.id);
+    if (!user) {
+      res.status(404).json({ message: "No such user" });
     } else {
-      next({ message: "user not found", status: 404 });
+      req.user = user;
+      next();
     }
-  });
-  next();
+  } catch (err) {
+    res.status(500).json({
+      message: "cannot find user",
+    });
+  }
+  // const { id } = req.params;
+  // User.getById(id).then((possibleUser) => {
+  //   if (possibleUser) {
+  //     req.user = possibleUser;
+  //     next();
+  //   } else {
+  //     next({ message: "user not found", status: 404 });
+  //   }
+  // });
+  // next();
 }
 
 function validateUser(req, res, next) {
-  if (!req.body.name) {
+  const { name } = req.body;
+  if (!name) {
     res.status(400).json({ message: "missing required name field" });
   } else {
     next();
